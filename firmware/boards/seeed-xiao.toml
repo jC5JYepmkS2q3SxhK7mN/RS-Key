@@ -18,8 +18,8 @@ power_pin = 23
 source = "bootsel"
 
 [flash]
-size_mb = 2
-kvmain_kb = 896
+size_mb = 4
+kvmain_kb = 3072
 
 # Nuisance onboard USR LED — drive off at boot.
 [usr_led]
