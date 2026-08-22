@@ -1,0 +1,38 @@
+name: Build RS-Key (WS-Zero-CM-4M-YK5)
+
+on:
+  push:
+    branches: [ "main", "develop" ] # 当推送到这些分支时自动编译
+  workflow_dispatch: # 允许手动触发编译
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 检出代码 (Checkout)
+        uses: actions/checkout@v4
+
+      - name: ❄️ 安装 Nix 环境 (Install Nix)
+        uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: 🛠️ 编译 4MB 伪装固件 (Build WS-Zero-CM-4M-YK5)
+        run: |
+          nix develop -c bash -c "
+            # 注入 Yubikey5 伪装参数并编译主固件
+            VIDPID=Yubikey5 cargo build --release -p firmware
+            
+            # 使用官方脚本隔离 bootloader 存储区
+            scripts/pt.sh target/thumbv8m.main-none-eabihf/release/firmware firmware-pt.elf
+            
+            # 转换为 UF2，使用你的专属精简名称
+            picotool uf2 convert firmware-pt.elf -t elf WS-Zero-CM-4M-YK5.uf2
+          "
+
+      - name: 📦 上传编译好的固件 (Upload Artifacts)
+        uses: actions/upload-artifact@v4
+        with:
+          name: RS-Key-Firmwares
+          path: |
+            WS-Zero-CM-4M-YK5.uf2
