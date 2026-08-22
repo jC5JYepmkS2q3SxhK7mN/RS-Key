@@ -1,0 +1,33 @@
+name: Build RS-Key Wipe Tool
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 检出代码 (Checkout)
+        uses: actions/checkout@v4
+
+      - name: ❄️ 安装 Nix 环境 (Install Nix)
+        uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: 🧹 编译 4M 专用擦除工具 (Build 4M Wipe Tool)
+        run: |
+          nix develop -c bash -c "
+            # 注入 FLASH_SIZE=4M 环境变量，满足最高安全擦除要求
+            FLASH_SIZE=4M cargo build --release -p rsk-wipe
+            
+            # 转换为 UF2，顺便把名字改成带 4M 标识的，防弄混
+            picotool uf2 convert target/thumbv8m.main-none-eabihf/release/rsk-wipe -t elf rsk-wipe-4M.uf2
+          "
+
+      - name: 📦 上传擦除固件 (Upload Wipe Artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: RS-Key-Wipe-Tool-4M
+          path: |
+            rsk-wipe-4M.uf2
